@@ -10,15 +10,20 @@ import UIKit
 import SafariServices
 
 class ExistingCustomerViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, SFSafariViewControllerDelegate {
-    
+
+
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var activity: UIActivityIndicatorView!
-
+    @IBOutlet weak var errorLabel: UILabel!
+    @IBOutlet weak var tryAgain: UIButton!
+    
     var data = [Customer]()
     var current:Customer?
     
     override func viewDidLoad() {
         tableView.isHidden = true
+        tryAgain.isHidden = true
+        errorLabel.isHidden = true
         super.viewDidLoad()
         loadCustomers()
         tableView.delegate = self
@@ -40,38 +45,21 @@ class ExistingCustomerViewController: UIViewController, UITableViewDataSource, U
             getNewToken()
         }
         //get json objects
-        let headers = [
-            Backend.CONTENT : Backend.JSON,
-            Backend.at_key : Backend.accessToken.accessToken,
-            Backend.rt_key : Backend.accessToken.refreshToken
-        ]
-        let request = Backend.createRequest(headers: headers , method: "GET", url: URL(string:"http://localhost:3000/customers")!)
-        let session = URLSession.shared
-        let dataTask = session.dataTask(with: request as URLRequest, completionHandler: { (data, response, error) -> Void in
-            guard let dataResponse = data,
-                error == nil else {
-                    print(error?.localizedDescription ?? "Response Error")
-                    return }
-            do{
-                ////convert to customer objects
-                //store and return as data
-                let jsonResponse = try JSONSerialization.jsonObject(with:
-                    dataResponse, options: [])
-                let jsonArray = jsonResponse as! [[String:Any]]
-                DispatchQueue.main.async {
-                    for object in jsonArray {
-                        self.data.append(Customer.init(dict: object))
-                    }
-                    //reload table data
-                    self.tableView.reloadData()
-                }
-            } catch let parsingError {
-                print("Error", parsingError)
-            }
-        })
-        dataTask.resume()
+        data += Backend.loadCustomers()
+        if data.isEmpty{
+            tableView.isHidden = true
+            activity.startAnimating()
+            activity.isHidden = false
+            errorLabel.isHidden = false
+            tryAgain.isHidden = false
+        }else {
+            tableView.reloadData()
+            tableView.isHidden = false
+            activity.stopAnimating()
+            errorLabel.isHidden = true
+            tryAgain.isHidden = true
+        }
     }
-    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return data.count;
     }
@@ -128,13 +116,18 @@ class ExistingCustomerViewController: UIViewController, UITableViewDataSource, U
     }
 
     func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
-        Backend.getAccessToken();
+        if !Backend.getAccessToken() {
+            showAlert(message: "Error authenticating.")
+        }
     }
 
     func showAlert(message: String) {
         let alert = UIAlertController(title: "QuickBooks Online Message", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Dismiss", style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
+    }
+    @IBAction func tryAgainPressed(_ sender: Any) {
+        loadCustomers()
     }
 }
 

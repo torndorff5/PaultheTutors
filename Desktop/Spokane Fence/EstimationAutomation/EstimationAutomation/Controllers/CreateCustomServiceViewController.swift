@@ -17,6 +17,7 @@ class CreateCustomServiceViewController: UIViewController {
     var unitPrice: Double = 0.0
     var quantity: Double = 0.0
     var tableIndex:Int?
+    var isCorrect:Bool = true
     @IBOutlet weak var descBox: UITextField!
     @IBOutlet weak var qtyBox: UITextField!
     @IBOutlet weak var upBox: UITextField!
@@ -43,14 +44,14 @@ class CreateCustomServiceViewController: UIViewController {
             quantity = Double(qtyBox.text!) ?? 0.0
         }
         else{
-            showAlert(message: "Invalid Quantity Value")
+            isCorrect = false
             return
         }
         if Validation.isDouble(upBox.text!) {
             unitPrice = Double(upBox.text!) ?? 0.0
         }
         else{
-            showAlert(message: "Invalid Unit Price Value")
+            isCorrect = false
             return
         }
         saleItem = SaleItemLineDetail.init(q: quantity, up: unitPrice)

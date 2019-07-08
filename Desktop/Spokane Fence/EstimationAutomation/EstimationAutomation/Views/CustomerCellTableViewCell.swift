@@ -10,10 +10,12 @@ import UIKit
 
 class CustomerCellTableViewCell: UITableViewCell {
 
+
     @IBOutlet weak var customerName: UILabel!
     @IBOutlet weak var customerAddress: UILabel!
     @IBOutlet weak var customerPhone: UILabel!
     
+
     override func awakeFromNib() {
         super.awakeFromNib()
         // Initialization code

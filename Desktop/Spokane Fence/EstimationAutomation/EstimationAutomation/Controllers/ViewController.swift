@@ -15,9 +15,15 @@ class ViewController: UIViewController, SFSafariViewControllerDelegate {
     @IBOutlet weak var activity: UIActivityIndicatorView!
 
     func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
-        Backend.getAccessToken();
-        //display create estimate button
-        createEstDisplay()
+        activity.startAnimating()
+        activity.isHidden = false
+        if Backend.getAccessToken() {
+            activity.stopAnimating()
+            createEstDisplay()
+        }
+        else{
+            connectQBDisplay()
+        }
     }
     
     func createEstDisplay(){

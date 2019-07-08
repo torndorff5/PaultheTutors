@@ -26,6 +26,7 @@ class CreateEstimateViewController: UIViewController,UITableViewDataSource, UITa
     var currentGate:Gate?
     var currIndex:Int = -1
     var drawImage:UIImage?
+    @IBOutlet weak var errorLabel: UILabel!
     @IBOutlet weak var notes: UITextView!
     @IBOutlet weak var picker: UIPickerView!
     @IBOutlet weak var totalAmount: UILabel!
@@ -47,7 +48,7 @@ class CreateEstimateViewController: UIViewController,UITableViewDataSource, UITa
         firstTime = true
         self.picker.delegate = self
         self.picker.dataSource = self
-
+        errorLabel.isHidden = true
         pickerData = ["Vinyl - White - Privacy - 6ft tall - GREEN posts", "Vinyl - White - Privacy - 6ft tall - ECONO posts", "Vinyl - White - Privacy - 6ft tall - PREM posts", "Vinyl - Tan - Privacy - 6ft tall - GREEN posts","Vinyl - Tan - Privacy - 6ft tall - ECONO posts","Vinyl - Tan - Privacy - 6ft tall - PREM posts"]
         picker.selectRow(0, inComponent: 0, animated: true)
         fencedata = pickerData[0]
@@ -90,6 +91,7 @@ class CreateEstimateViewController: UIViewController,UITableViewDataSource, UITa
         // Use data from the view controller which initiated the unwind segue
         if let lineVC = unwindSegue.source as? CreateLineViewController {
             if Validation.isDouble(lineVC.length.text ?? ""){
+                errorLabel.isHidden = true
                 length = Double(lineVC.length.text!)
                 bti = lineVC.bti.isOn
                 eti = lineVC.eti.isOn
@@ -101,15 +103,12 @@ class CreateEstimateViewController: UIViewController,UITableViewDataSource, UITa
                 addLineItem(item: newLine)
             }
             else{
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { // Change `2.0` to the desired number of seconds.
-                    // Code you want to be delayed
-                    self.showAlert(message: "Invalid Length")
-                }
-
+                errorLabel.isHidden = false
             }
         }//Need to validate all the forms
         if let lineVC = unwindSegue.source as? CreateGateViewController {
             if Validation.isDouble(lineVC.length.text ?? ""){
+                errorLabel.isHidden = true
                 length = Double(lineVC.length.text!)
                 loc = lineVC.loc
                 desc = genGateDesc(loc:loc ?? "Left Return")
@@ -119,13 +118,19 @@ class CreateEstimateViewController: UIViewController,UITableViewDataSource, UITa
                 addLineItem(item: newLine)
             }
             else{
-                showAlert(message: "Invalid Length")
+                errorLabel.isHidden = false
             }
         }
         if let customerVC = unwindSegue.source as? CreateCustomServiceViewController {
             //add line item
-            currIndex = customerVC.tableIndex ?? -1
-            addLineItem(item: customerVC.item!)
+            if customerVC.isCorrect {
+                errorLabel.isHidden = true
+                currIndex = customerVC.tableIndex ?? -1
+                addLineItem(item: customerVC.item!)
+            }
+            else {
+                errorLabel.isHidden = false
+            }
         }
         if let drawVC = unwindSegue.source as? DrawingViewController {
             drawImage = drawVC.tempImageView.image
@@ -217,11 +222,13 @@ class CreateEstimateViewController: UIViewController,UITableViewDataSource, UITa
     func getMarg() -> Double {
         if !Validation.isDouble(margin.text!) {
             showAlert(message: "Invalid Margin Multiplier")
+            margin.text = "1.0"
             return 1.0
         }
         let val = Double(margin.text!) ?? 1.0
         if val < 1.0 {
             showAlert(message: "Invalid Margin Multiplier")
+            margin.text = "1.0"
             return 1.0
         }
         return val
@@ -336,7 +343,9 @@ class CreateEstimateViewController: UIViewController,UITableViewDataSource, UITa
         }
     }
     func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
-        Backend.getAccessToken()
+        if !Backend.getAccessToken() {
+            showAlert(message: "Error Authenticating")
+        }
     }
     func connectToQBO(){
         let safariVC = Backend.safariVCinit()

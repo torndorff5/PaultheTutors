@@ -13,11 +13,11 @@ import SafariServices
 //validate existing forms on all pages and exits on all pages
     //customer detail validation****************
     //verify delete customer ************
-    //line info validation 
-    //estimate info validation
-    //varify leaving the estimate creation.
-//fix if someone leaves safari before an access token is achieved
-//allow customers to load again if it fails 
+    //line info validation ***************
+    //estimate info validation ************
+    //varify leaving the estimate creation. 
+//fix if someone leaves safari before an access token is achieved*******************
+//allow customers to load again if it fails ***************************
 //add chain link
 //fix gate cost 
 //add functionality for the drawing
@@ -411,10 +411,45 @@ class Backend {
                                     rtea_key:rtea]
         accessToken = AccessToken(dictionary: a_t as [String:Any])
     }
-    static func getAccessToken(){
+    static func getAccessToken() -> Bool{
         //pass code and realmId to as headers to POST http://localhost/authenticate
         //receive JSON object returned
-        let headers = [
+        var success = false
+        DispatchQueue.global(qos: .userInitiated).sync {
+            let group = DispatchGroup()
+            //get json objects
+            let headers = [
+                CONTENT : APPX,
+                "Connection": "keep-alive",
+                "Cache-Control": "no-cache",
+            ]
+            let request = createRequest(headers: headers , method: "POST", url: URL(string:AUTHORIZE_URL+"/"+username+"/"+password)!)
+            let session = URLSession.shared
+            group.enter()
+            let dataTask = session.dataTask(with: request as URLRequest, completionHandler: { (data, response, error) -> Void in
+                guard let dataResponse = data,
+                    error == nil else {
+                        print(error?.localizedDescription ?? "Response Error")
+                        group.leave()
+                        return }
+                do{
+                    //here dataResponse received from a network request
+                    let jsonResponse = try JSONSerialization.jsonObject(with:
+                        dataResponse, options: [])
+                    let jsonArray = jsonResponse as! [String: Any]
+                    accessToken = AccessToken.init(dictionary: jsonArray)
+                    success = true
+                    group.leave()
+                } catch let parsingError {
+                    print("Error", parsingError)
+                    group.leave()
+                }
+            })
+            dataTask.resume()
+            group.wait()
+        }
+        return success
+        /*let headers = [
             CONTENT : APPX,
             "Connection": "keep-alive",
             "Cache-Control": "no-cache",
@@ -437,6 +472,46 @@ class Backend {
             }
         })
         dataTask.resume()
+ */
+    }
+    static func loadCustomers() -> [Customer] {
+        var cusdata = [Customer]()
+        DispatchQueue.global(qos: .userInitiated).sync {
+        let group = DispatchGroup()
+        //get json objects
+        let headers = [
+            Backend.CONTENT : Backend.JSON,
+            Backend.at_key : Backend.accessToken.accessToken,
+            Backend.rt_key : Backend.accessToken.refreshToken
+        ]
+        let request = Backend.createRequest(headers: headers , method: "GET", url: URL(string:"http://localhost:3000/customers")!)
+        let session = URLSession.shared
+        group.enter()
+        let dataTask = session.dataTask(with: request as URLRequest, completionHandler: { (data, response, error) -> Void in
+            guard let dataResponse = data,
+                error == nil else {
+                    print(error?.localizedDescription ?? "Response Error")
+                    group.leave()
+                    return }
+            do{
+                ////convert to customer objects
+                //store and return as data
+                let jsonResponse = try JSONSerialization.jsonObject(with:
+                    dataResponse, options: [])
+                let jsonArray = jsonResponse as! [[String:Any]]
+                for object in jsonArray {
+                    cusdata.append(Customer.init(dict: object))
+                }
+                group.leave()
+            } catch let parsingError {
+                print("Error", parsingError)
+                group.leave()
+            }
+        })
+            dataTask.resume()
+            group.wait()
+        }
+        return cusdata
     }
     static func createCustomer(c:Customer!) -> Customer?{
         var cus:Customer?
